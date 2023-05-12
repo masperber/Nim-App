@@ -25,12 +25,16 @@ function countPearls() {
     }
     return count;
 }
-  
+
+function updateMessage(message) {
+    messageBox.textContent = message;
+}
 
 // Generate a random number of rows with a random number of pearls in each row
 function generateGame() {
     gameState.rows = [];
     gameState.playerTurn = true;
+    gameState.gameOver = false;
     gameState.rowSelected = -1;
     const numRows = Math.floor(Math.random() * (MAX_ROWS - MIN_ROWS + 1)) + MIN_ROWS; // generate between MIN_ROWS and MAX_ROWS rows
     for (let i = 0; i < numRows; i++) {
@@ -41,26 +45,6 @@ function generateGame() {
     console.log(gameState.rows);
     console.log(countPearls());
 }
-
-function updateMessage(message) {
-    messageBox.textContent = message;
-}
-
-function endTurn() {
-    // If it is the player's turn, switch to the AI's turn
-    if (isPlayerTurn()) {
-        gameState.playerTurn = false;
-        gameState.rowSelected = -1;
-        updateMessage("It is now the computer's turn.");
-        setTimeout(handleComputerTurn, 1000); // wait 1 second before making the move
-    }
-    // If it is the AI's turn, switch to the player's turn
-    else {
-        gameState.playerTurn = true;
-        gameState.rowSelected = -1;
-        updateMessage("It is now your turn.");
-    }
-}  
 
 // Render the game board based on the current game state
 function renderGame() {
@@ -100,7 +84,8 @@ function handlePearlClick(row) {
     if (countPearls() == 1) {
         endGame(isPlayerTurn());
     }
-    endTurnButton.classList.remove("disabled"); // enable the "end turn" button
+    endTurnButton.textContent = "End turn";
+    endTurnButton.disabled = false; // enable the "end turn" button
 }
 
 function handleComputerTurn() {
@@ -109,6 +94,10 @@ function handleComputerTurn() {
   
     // generate a random number of pearls to remove from the row
     let numToRemove = Math.floor(Math.random() * (gameState.rows[row] - 1)) + 1;
+
+    if (numToRemove == countPearls()) {
+        numToRemove--;
+    }
     
     // remove the pearls from the row
     for (let i = 0; i < numToRemove; i++) {
@@ -123,20 +112,22 @@ function handleComputerTurn() {
     }
 }
 
-function newGame() {
-    // Reset game state
-    generateGame();
-    renderGame();
-
-    // Update message and UI
-    updateMessage("New game started. Your turn.");
-    
-    // Reset end turn button
-    endTurnButton.removeEventListener("click", newGame);
-    endTurnButton.addEventListener("click", endTurn);
-    endTurnButton.textContent = "End Turn";
+function endTurn() {
+    endTurnButton.disabled = true; // disable the "end turn button"
+    // If it is the player's turn, switch to the AI's turn
+    if (isPlayerTurn()) {
+        gameState.playerTurn = false;
+        gameState.rowSelected = -1;
+        updateMessage("Computer's turn");
+        setTimeout(handleComputerTurn, 1000); // wait 1 second before making the move
+    }
+    // If it is the AI's turn, switch to the player's turn
+    else {
+        gameState.playerTurn = true;
+        gameState.rowSelected = -1;
+        updateMessage("Your turn");
+    }
 }
-
 function endGame(playerWon) {
     gameState.gameOver = true;
     if (playerWon) {
@@ -145,18 +136,25 @@ function endGame(playerWon) {
         updateMessage("Computer won!");
     }
     endTurnButton.textContent = "New game";
+    endTurnButton.disabled = false;
     endTurnButton.removeEventListener("click", endTurn);
     endTurnButton.addEventListener("click", newGame);
 }
 
+function newGame() {
+    // Reset game state
+    generateGame();
+    renderGame();
+
+    // Update message and UI
+    updateMessage("New game started! Your turn");
+    
+    // add event listener to the end turn button
+    endTurnButton.removeEventListener("click", newGame);
+    endTurnButton.addEventListener("click", endTurn);
+    endTurnButton.textContent = "Pass";
+}
+
 window.addEventListener("load", function () {
-  // generate a new game board
-  generateGame();
-  renderGame();
-
-  // initialize the turn variables
-  updateMessage(isPlayerTurn() ? "Your turn" : "Computer's turn");
-
-  // add event listener to the end turn button
-  endTurnButton.addEventListener("click", endTurn);
+    newGame();
 });
