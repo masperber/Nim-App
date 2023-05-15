@@ -4,8 +4,12 @@ const button = document.getElementById("button");
 const taunt = document.getElementById("taunt");
 const MIN_ROWS = 3;
 const MAX_ROWS = 5;
-const MIN_PEARLS = 1;
-const MAX_PEARLS = 12;
+const MIN_SMALL_ROW = 1;
+const MAX_SMALL_ROW = 5;
+const MIN_MED_ROW = 4;
+const MAX_MED_ROW = 10;
+const MIN_LARGE_ROW = 8;
+const MAX_LARGE_ROW = 15;
 
 // Define the initial game state
 let gameState = {
@@ -40,6 +44,19 @@ function nimSum(rows) {
     return nimSum;
 }
 
+function generateRow(size) {
+    switch (size % 3) {
+        case 1:
+            return Math.floor(Math.random() * (MAX_SMALL_ROW - MIN_SMALL_ROW + 1)) + MIN_SMALL_ROW;
+        case 2:
+            return Math.floor(Math.random() * (MAX_MED_ROW - MIN_MED_ROW + 1)) + MIN_MED_ROW;
+        case 0:
+            return Math.floor(Math.random() * (MAX_LARGE_ROW - MIN_LARGE_ROW + 1)) + MIN_LARGE_ROW;
+        default:
+            return Math.floor(Math.random() * 15) + 1;
+    }
+}
+
 // Generate a random number of rows with a random number of pearls in each row
 function generateGame() {
     gameState.rows = [];
@@ -49,7 +66,16 @@ function generateGame() {
     gameState.hasTaunted = false;
     const numRows = Math.floor(Math.random() * (MAX_ROWS - MIN_ROWS + 1)) + MIN_ROWS; // generate between MIN_ROWS and MAX_ROWS rows
     for (let i = 0; i < numRows; i++) {
-        const numPearls = Math.floor(Math.random() * (MAX_PEARLS - MIN_PEARLS + 1)) + MIN_PEARLS; // generate between 1 and 12 pearls per row
+        var numPearls;
+        if (gameState.rows.length == 0) {
+            numPearls = generateRow(i);
+        }
+        else {
+            numPearls = gameState.rows[0];
+            while (gameState.rows.includes(numPearls)) {
+                numPearls = generateRow(i);
+            }
+        }
         gameState.rows.push(numPearls);
     }
     gameState.rows.sort(function(a,b){return a-b});
@@ -58,9 +84,11 @@ function generateGame() {
 // Render the game board based on the current game state
 function renderGame() {
     gameContainer.innerHTML = "";
+    // create a <div> with class game-row for each number in the gameState.rows array
     for (let i = 0; i < gameState.rows.length; i++) {
             const rowContainer = document.createElement("div");
             rowContainer.classList.add("game-row");
+            // create a <div> with class pearl corresponding to the number in each cell of the array
             for (let j = 0; j < gameState.rows[i]; j++) {
                 const pearl = document.createElement("div");
                 pearl.classList.add("pearl");
@@ -88,11 +116,13 @@ function handlePearlClick(row) {
     }
     gameState.rowSelected = row;
     removePearl(row);
+    button.textContent = "End turn";
+    button.disabled = false; // enable the "end turn" button
+
+    // end the game if only 1 pearl remains
     if (countPearls() == 1) {
         endGame(isPlayerTurn());
     }
-    button.textContent = "End turn";
-    button.disabled = false; // enable the "end turn" button
 }
 
 function randomTurn() {
@@ -111,15 +141,18 @@ function randomTurn() {
 }
 
 function findSolution() {
+    // count the number of singleton rows
     let numSingletons = 0;
     for (let i = 0; i < gameState.rows.length; i++) {
         if (gameState.rows[i] == 1) {
             numSingletons++;
         }
     }
+    // if all rows are singleton rows, then remove the first pearl
     if (numSingletons == gameState.rows.length) {
         return [0, 1];
     }
+    // if all rows but one are singleton rows, calculate the winning move
     else if (numSingletons == gameState.rows.length - 1) {
         let maxRow = gameState.rows.indexOf(Math.max(...gameState.rows));
         if (gameState.rows.length % 2 == 0) {
@@ -129,6 +162,7 @@ function findSolution() {
             return [maxRow, gameState.rows[maxRow] - 1];
         }
     }
+    // if there are more than 1 non-singleton rows, calculate a NimSum = 0 solution
     else {
         let gameNimSum = nimSum(gameState.rows);
         for (let i = 0; i < gameState.rows.length; i++) {
@@ -169,7 +203,7 @@ function endTurn() {
 
     // If it is the player's turn, switch to the AI's turn
     if (isPlayerTurn()) {
-        if (!gameState.hasTaunted && nimSum(gameState.rows) != 0) {
+        if (!gameState.hasTaunted && nimSum(gameState.rows) != 0 && countPearls() > 5) {
             gameState.hasTaunted = true;
             taunt.textContent = "NimBot: \"THAT... was your first mistake.\"";
         }
@@ -178,7 +212,7 @@ function endTurn() {
         }
         gameState.playerTurn = false;
         gameState.rowSelected = -1;
-        updateMessage("Computer's turn");
+        updateMessage("NimBot's turn");
         setTimeout(handleComputerTurn, 1000); // wait 1 second before making the move
     }
     // If it is the AI's turn, switch to the player's turn
@@ -188,6 +222,7 @@ function endTurn() {
         updateMessage("Your turn");
     }
 }
+
 function endGame(playerWon) {
     gameState.gameOver = true;
     if (playerWon) {
@@ -195,10 +230,13 @@ function endGame(playerWon) {
     } else {
         updateMessage("Computer won!");
     }
-    button.textContent = "New game";
-    button.disabled = false;
+
     button.removeEventListener("click", endTurn);
     button.addEventListener("click", newGame);
+    console.log("1");
+    button.textContent = "New Game";
+    console.log("2");
+    button.disabled = false;
 }
 
 function newGame() {
